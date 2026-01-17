@@ -1,0 +1,1 @@
+C:\Users\jurge\python_virtualenvs\data-science\Scripts\activate
