@@ -15,8 +15,6 @@ class ShowData:
         return webdriver.Chrome(service=service, options=options)  
 
     def getIndexPrice(url,driver):
-        driver = driver 
         driver.get(url)
         price = driver.find_element(By.XPATH, "//span[@data-testid='qsp-price']")
-        driver.quit()
-        return price
+        return price.text

@@ -10,7 +10,6 @@ class MainWindow:
 
     _instance = None
     current_index = ""
-    threads = []
     url = ""
     def __init__(self):
         self.root = tk.Tk()
@@ -55,7 +54,7 @@ class MainWindow:
         self.fGraphInfoFrame.pack(side="left")
         self.lGraphTitleLabel = ttk.Label(self.fGraphInfoFrame, text="Indices", font=("Aptos", 18,"bold"),style="LabelColor.TLabel")
         self.lGraphTitleLabel.pack(side = "top",pady= 5, padx= 20)
-        self.lGraphIndexName = ttk.Label(self.fGraphInfoFrame, text=self.current_index,font=("Aptos", 18),style="LabelColor.TLabel")
+        self.lGraphIndexName = ttk.Label(self.fGraphInfoFrame ,font=("Aptos", 18),style="LabelColor.TLabel")
         self.lGraphIndexName.pack(side="top",pady=2,padx=5, expand=True, anchor="w")
         self.lGraphChart = ttk.Label(self.fGraphInfoFrame, text="Chart", font=("Aptos",16,"italic"),style="LabelColor.TLabel")
         self.lGraphChart.pack(side="top" ,expand=True,padx=5, pady=20,anchor="w")
@@ -70,9 +69,9 @@ class MainWindow:
         self.bSMPIndex = ttk.Button(self.fVisualizationChoicesFrame, style="ButtonColor.TButton", text="GSPC", )
         self.bSMPIndex.configure(command=lambda: self.activeTicker("GSPC"))
         self.bSMPIndex.grid(row=0,column=0, padx=1, pady=10,sticky="nsew")
-        self.bDIJIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="DIJ")
-        self.bDIJIndex.configure(command=lambda: self.activeTicker("DIJ"))
-        self.bDIJIndex.grid(row=1, column=0,padx=5,pady=10,sticky="nsew")
+        self.bDJIIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="DJI")
+        self.bDJIIndex.configure(command=lambda: self.activeTicker("DJI"))
+        self.bDJIIndex.grid(row=1, column=0,padx=5,pady=10,sticky="nsew")
         self.bIXICIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton", text="IXIC")
         self.bIXICIndex.configure(command=lambda: self.activeTicker("IXIC"))
         self.bIXICIndex.grid(row=2, column=0,padx=5,pady=10,sticky="nsew")
@@ -109,24 +108,29 @@ class MainWindow:
         self.lDailyNews1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         self.lDailyNews2 = ttk.Label(self.fDailyNewsFrame,text="Daily News 2",font=("Aptos",14)) 
         self.lDailyNews2.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-        t = threading.Thread(target=self.showTicker, kwargs={"sleep_time":5}) 
-        self.threads.append(t)
-        for thread in self.threads:
-            thread.start()
-        for thread in self.threads:
-            thread.join()
+        self.driver = ShowData.initializeWebdriver()
+        self.updateTickerAndPrice()
 
-    def showTicker(self, sleep_time = 5):
-        if len(self.current_index) >0 or self.current_index != "":
-            driver = ShowData.initializeWebdriver()
-            ShowData.getIndexPrice(url=self.url,driver=driver)
-            time.sleep(sleep_time)
+
+    def updateTickerAndPrice(self):
+        if self.current_index:
+            # price = ShowData.getIndexPrice(url=self.url,driver=self.driver)
+            # self.lGraphIndexName.configure(text=f"{self.current_index} : {price}")
+            # self.driver.refresh()
+            t = threading.Thread(target=self.getTickerAndPRice)
+            t.start()
+        self.root.after(5000,self.updateTickerAndPrice) 
      
+    def getTickerAndPRice(self):
+            price = ShowData.getIndexPrice(url=self.url,driver=self.driver)
+            self.lGraphIndexName.configure(text=f"{self.current_index} : {price}")
+            self.driver.refresh()    
+
+
     def activeTicker(self,ticker):
         self.current_index = ticker
         self.url = f"https://finance.yahoo.com/quote/%5E{self.current_index}/"
-        messagebox.showinfo(len(self.current_index), self.url)
-
+        messagebox.showinfo("URL",self.url)
 
     def getTime(self):
         return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -149,5 +153,6 @@ class MainWindow:
 if __name__ == "__main__":
     window = MainWindow.getInstance()
     window.run()
+    
     
 

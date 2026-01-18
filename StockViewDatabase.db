@@ -1,0 +1,31 @@
+create table if not exists FinancialInstrument(
+    id INTEGER primary key,
+    ticker TEXT not null,
+    full_name TEXT not null,
+    last_closing_price real,
+    foreign key (historical_price_id) references HistoricalPrice(id),
+    foreign key (news_id) references NewsData(id),
+);
+
+
+create table if not exists HistoricalPrice(
+    id INTEGER primary key,
+    closing_price real,
+    date date not null,
+    foreign key (financial_instrument_id) references FinancialInstrument(id)
+);
+
+create table if not exists NewsData(
+    id INTEGER primary key,
+    article_title TEXT not null,
+    article_content TEXT not null,
+    article_date date not null,
+    foreign key (financial_instrument_id) references FinancialInstrument(id)
+);
+
+
+create table if not exists Protfolio(
+    id INTEGER primary key,
+    shares INTEGER,
+    foreign key (financial_instrument_id) references FinancialInstrument(id)
+);
