@@ -37,7 +37,7 @@ class MainWindow:
         self.fTitleFrame.pack(fill="both")
         self.lTitleLabel = ttk.Label(self.fTitleFrame, text="StockView", font=("Aptos", 20, "bold"),style="LabelColor.TLabel")
         self.lTitleLabel.pack(pady=5)
-        self.lTimeLabel = ttk.Label(self.fTitleFrame, text=f"{self.getTime()}", font=("Aptos",12,"italic"),style="LabelColor.TLabel")
+        self.lTimeLabel = ttk.Label(self.fTitleFrame, font=("Aptos",12,"italic"),style="LabelColor.TLabel")
         self.lTimeLabel.pack(pady=5)
         self.pwResizingFrame = ttk.PanedWindow(self.fMainFrame,orient='horizontal')
         self.pwResizingFrame.pack(fill="both",expand=True)
@@ -66,7 +66,7 @@ class MainWindow:
         #Visualization Choices
         self.fVisualizationChoicesFrame = ttk.Frame(self.fVisualizationGraphs, padding=2, style="MainColor.TFrame")        
         self.fVisualizationChoicesFrame.pack(side="right")
-        self.bSMPIndex = ttk.Button(self.fVisualizationChoicesFrame, style="ButtonColor.TButton", text="GSPC", )
+        self.bSMPIndex = ttk.Button(self.fVisualizationChoicesFrame, style="ButtonColor.TButton", text="^GSPC", )
         self.bSMPIndex.configure(command=lambda: self.activeTicker("GSPC"))
         self.bSMPIndex.grid(row=0,column=0, padx=1, pady=10,sticky="nsew")
         self.bDJIIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="DJI")
@@ -110,6 +110,7 @@ class MainWindow:
         self.lDailyNews2.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         self.driver = ShowData.initializeWebdriver()
         self.updateTickerAndPrice()
+        self.updateTime()
 
 
     def updateTickerAndPrice(self):
@@ -130,10 +131,18 @@ class MainWindow:
     def activeTicker(self,ticker):
         self.current_index = ticker
         self.url = f"https://finance.yahoo.com/quote/%5E{self.current_index}/"
-        messagebox.showinfo("URL",self.url)
+
+    
+    def updateTime(self):
+        t_clock = threading.Thread(target=self.getTime)
+        t_clock.start()
+        self.root.after(1000,self.updateTime)
 
     def getTime(self):
-        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.lTimeLabel.configure(text=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+
+
 
     def _onClose(self):
         MainWindow._instance = None
