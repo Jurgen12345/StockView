@@ -9,6 +9,6 @@ data = ticker.history(period = "max",interval="1d")
 # print(data["Open"].iloc[0])
 # print(data.index[-1])
 print(data.head())
-
+print(type(data["Volume"][0]))
 
 print(data.columns)

@@ -5,13 +5,19 @@ import datetime
 from dataProcessing import ShowData 
 import time
 import threading
+import matplotlib.pyplot as plt
+from dataBase import DataBase
 
 class MainWindow:
 
     _instance = None
     current_index = ""
+    current_indexID= 1
+    global_price = 0.0
+    current_ticker = ""
     url = ""
     def __init__(self):
+        self.db = DataBase.getInstance()
         self.root = tk.Tk()
         self.root.geometry("1200x600")
         self.sMainStyle = ttk.Style()
@@ -67,19 +73,19 @@ class MainWindow:
         self.fVisualizationChoicesFrame = ttk.Frame(self.fVisualizationGraphs, padding=2, style="MainColor.TFrame")        
         self.fVisualizationChoicesFrame.pack(side="right")
         self.bSMPIndex = ttk.Button(self.fVisualizationChoicesFrame, style="ButtonColor.TButton", text="^GSPC", )
-        self.bSMPIndex.configure(command=lambda: self.activeTicker("GSPC"))
+        self.bSMPIndex.configure(command=lambda: self.activeTicker("GSPC",1))
         self.bSMPIndex.grid(row=0,column=0, padx=1, pady=10,sticky="nsew")
         self.bDJIIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="DJI")
-        self.bDJIIndex.configure(command=lambda: self.activeTicker("DJI"))
+        self.bDJIIndex.configure(command=lambda: self.activeTicker("DJI",2))
         self.bDJIIndex.grid(row=1, column=0,padx=5,pady=10,sticky="nsew")
         self.bIXICIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton", text="IXIC")
-        self.bIXICIndex.configure(command=lambda: self.activeTicker("IXIC"))
+        self.bIXICIndex.configure(command=lambda: self.activeTicker("IXIC",3))
         self.bIXICIndex.grid(row=2, column=0,padx=5,pady=10,sticky="nsew")
         self.bNYAIndex= ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="NYA")
-        self.bNYAIndex.configure(command=lambda: self.activeTicker("NYA")) 
+        self.bNYAIndex.configure(command=lambda: self.activeTicker("NYA",4)) 
         self.bNYAIndex.grid(row=3, column=0,padx=5,pady=10,sticky="nsew")
         self.bBUK100PIndex= ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="BUK100P")
-        self.bBUK100PIndex.configure(command=lambda : self.activeTicker("BUK100P"))
+        self.bBUK100PIndex.configure(command=lambda : self.activeTicker("BUK100P",5))
         self.bBUK100PIndex.grid(row=4, column=0,padx=5,pady=10,sticky="nsew")
 
 
@@ -110,26 +116,47 @@ class MainWindow:
         self.lDailyNews2.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         self.driver = ShowData.initializeWebdriver()
         self.updateTickerAndPrice()
+        self.updateFinancialInstrumentCurrentPrice()
         self.updateTime()
-
 
     def updateTickerAndPrice(self):
         if self.current_index:
-            # price = ShowData.getIndexPrice(url=self.url,driver=self.driver)
-            # self.lGraphIndexName.configure(text=f"{self.current_index} : {price}")
-            # self.driver.refresh()
             t = threading.Thread(target=self.getTickerAndPRice)
             t.start()
-        self.root.after(5000,self.updateTickerAndPrice) 
+        self.root.after(2000,self.updateTickerAndPrice) 
+
      
     def getTickerAndPRice(self):
-            price = ShowData.getIndexPrice(url=self.url,driver=self.driver)
+            price = ShowData.getIndexPrice(url=self.url,driver=self.driver).replace("'","").replace(",","")
             self.lGraphIndexName.configure(text=f"{self.current_index} : {price}")
+            self.global_price = float(price)
             self.driver.refresh()    
 
+    def updateFinancialInstrumentCurrentPrice(self):
+        self.db.cursor.execute(
+                "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
+                (float(self.global_price),self.current_indexID)
+        )
+        # self.db.cursor.execute(
+        #     "SELECT last_closing_price FROM FinancialInstrument where id = ?",
+        #     (self.current_indexID,)
+        # )
 
-    def activeTicker(self,ticker):
+        # db_price = self.db.cursor.fetchall()[0]
+        # self.db.cursor.execute(
+        #     "SELECT ticker FROM FinancialInstrument where id = ?",
+        #     (self.current_indexID,)
+        # )
+
+        self.db.conn.commit()
+        
+        # db_ticker = self.db.cursor.fetchall()[0]
+        # messagebox.showinfo(db_ticker,db_price)
+        self.root.after(5000, self.updateFinancialInstrumentCurrentPrice)
+
+    def activeTicker(self,ticker,indexid):
         self.current_index = ticker
+        self.current_indexID = indexid
         self.url = f"https://finance.yahoo.com/quote/%5E{self.current_index}/"
 
     
@@ -147,6 +174,7 @@ class MainWindow:
     def _onClose(self):
         MainWindow._instance = None
         self.root.destroy()
+        self.db.conn.close()
     
     def run(self):
         self.root.mainloop()

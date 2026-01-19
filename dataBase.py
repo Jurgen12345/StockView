@@ -5,6 +5,8 @@ from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 from crawl4ai import CrawlerRunConfig, AsyncWebCrawler, BrowserConfig
 import re
 import asyncio
+import threading
+
 
 
 class DataBase:
@@ -59,14 +61,13 @@ class DataBase:
         COMMIT;
         """)
 
-        self.cursor.execute("SELECT * from NewsData")
-        self.fin_instrument_data = self.cursor.fetchall()
-        if self.fin_instrument_data == 0:
+        self.cursor.execute("SELECT * from FinancialInstrument")
+        self.checkingDBLoad = self.cursor.fetchall()
+        if len(self.checkingDBLoad) == 0:
             self.FinancialInstrumentInitialization()
             self.HistoricalPriceInitialization()
             asyncio.run(self.NewsDataInitialization())
-        self.conn.close()
-        
+ 
     
     def FinancialInstrumentInitialization(self):
         ids = [1,2,3,4,5]
@@ -89,8 +90,8 @@ class DataBase:
             for price_index in range(len(data)):
                 self.cursor.execute(
                     "INSERT INTO HistoricalPrice(id,financial_instrument_id,closing_price,open_price,high_price,low_price,volume,date) values (?,?,?,?,?,?,?,?)",
-                    (f"{self.tickers[ticker_index]}-{price_index}", ids[ticker_index],data["Close"].iloc[price_index], data["Open"].iloc[price_index],data["High"].iloc[price_index]
-                     , data["Low"].iloc[price_index], data["Volume"].iloc[price_index], data.index[price_index].strftime("%Y-%m-%d %H:%M:%S"))
+                    (f"{self.tickers[ticker_index]}-{price_index}", ids[ticker_index],float(data["Close"].iloc[price_index]), float(data["Open"].iloc[price_index]),float(data["High"].iloc[price_index])
+                     , float(data["Low"].iloc[price_index]), int(data["Volume"].iloc[price_index]), data.index[price_index].strftime("%Y-%m-%d %H:%M:%S"))
                 )
         self.conn.commit()
 
@@ -155,13 +156,6 @@ class DataBase:
         self.conn.commit()
         
 
-        # for index in range(len(ids)):
-        #     for news_index in range(len(article_content_df)):
-        #         self.cursor.execute(
-        #             "INSERT INTO NewsData(id,financial_instrument_id,article_title,article_content,article_date,article_url) values(?,?,?,?,?,?)",
-        #             (news_index, ids[index], article_content_df["article-title"].iloc[news_index],article_content_df["articl"])
-        #         )
-
 
     @classmethod
     def getInstance(cls):
@@ -170,8 +164,14 @@ class DataBase:
         return cls._dbInstance
 
 
-if __name__ == "__main__":
-    dbconnection = DataBase.getInstance()
-    print(dbconnection.fin_instrument_data)
 
+# if __name__ == "__main__":
+#     db = DataBase.getInstance()
+#     db.cursor.execute(
+#         "SELECT ticker from FinancialInstrument where id = 1"
+#     )
+#     db.conn.commit()
+#     ticker = db.cursor.fetchall()
+#     print(ticker[0][0])
+#     db.conn.close()
 
