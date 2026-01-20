@@ -3,10 +3,12 @@ from tkinter import ttk
 from tkinter import messagebox
 import datetime
 from dataProcessing import ShowData 
-import time
 import threading
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from dataBase import DataBase
+import matplotlib.dates as mdates
 
 class MainWindow:
 
@@ -66,26 +68,33 @@ class MainWindow:
         self.lGraphChart.pack(side="top" ,expand=True,padx=5, pady=20,anchor="w")
         self.fVisualizationGraphs = ttk.Frame(self.fGraphInfoFrame, padding=2, style="MainColor.TFrame")
         self.fVisualizationGraphs.pack(side="bottom", padx=10, pady=20)
-        self.cGraphsFrame = tk.Canvas(self.fVisualizationGraphs,bg="white",height=300,width=400)
-        self.cGraphsFrame.pack(side="left",padx = 5, pady=20)
+        # self.cGraphsFrame = tk.Canvas(self.fVisualizationGraphs,bg="white",height=400,width=500)
+        # self.cGraphsFrame.pack(side="left",padx = 5, pady=20)
+        self.fig = Figure(figsize=(4,5),dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.line, = self.ax.plot([],[])
+        self.cGraphsFrame = FigureCanvasTkAgg(figure=self.fig,master=self.fVisualizationGraphs)
+        self.cGraphsFrame.draw()
+        self.cGraphsFrame.get_tk_widget().pack(side="left", padx=5, pady=20)
+        
 
         #Visualization Choices
         self.fVisualizationChoicesFrame = ttk.Frame(self.fVisualizationGraphs, padding=2, style="MainColor.TFrame")        
         self.fVisualizationChoicesFrame.pack(side="right")
         self.bSMPIndex = ttk.Button(self.fVisualizationChoicesFrame, style="ButtonColor.TButton", text="^GSPC", )
-        self.bSMPIndex.configure(command=lambda: self.activeTicker("GSPC",1))
+        self.bSMPIndex.configure(command=lambda: (self.activeTicker("GSPC",1), self.updateChartWithCurrentIndex()))
         self.bSMPIndex.grid(row=0,column=0, padx=1, pady=10,sticky="nsew")
         self.bDJIIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="DJI")
-        self.bDJIIndex.configure(command=lambda: self.activeTicker("DJI",2))
+        self.bDJIIndex.configure(command=lambda: (self.activeTicker("DJI",2),self.updateChartWithCurrentIndex()))
         self.bDJIIndex.grid(row=1, column=0,padx=5,pady=10,sticky="nsew")
         self.bIXICIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton", text="IXIC")
-        self.bIXICIndex.configure(command=lambda: self.activeTicker("IXIC",3))
+        self.bIXICIndex.configure(command=lambda: (self.activeTicker("IXIC",3), self.updateChartWithCurrentIndex()))
         self.bIXICIndex.grid(row=2, column=0,padx=5,pady=10,sticky="nsew")
         self.bNYAIndex= ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="NYA")
-        self.bNYAIndex.configure(command=lambda: self.activeTicker("NYA",4)) 
+        self.bNYAIndex.configure(command=lambda: (self.activeTicker("NYA",4), self.updateChartWithCurrentIndex())) 
         self.bNYAIndex.grid(row=3, column=0,padx=5,pady=10,sticky="nsew")
         self.bBUK100PIndex= ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="BUK100P")
-        self.bBUK100PIndex.configure(command=lambda : self.activeTicker("BUK100P",5))
+        self.bBUK100PIndex.configure(command=lambda : (self.activeTicker("BUK100P",5), self.updateChartWithCurrentIndex()))
         self.bBUK100PIndex.grid(row=4, column=0,padx=5,pady=10,sticky="nsew")
 
 
@@ -115,20 +124,76 @@ class MainWindow:
         self.lDailyNews2 = ttk.Label(self.fDailyNewsFrame,text="Daily News 2",font=("Aptos",14)) 
         self.lDailyNews2.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         self.driver = ShowData.initializeWebdriver()
-        self.updateTickerAndPrice()
         self.updateFinancialInstrumentCurrentPrice()
+        self.updateTickerAndPrice()
+        self.updateTickerLabel()
         self.updateTime()
 
     def updateTickerAndPrice(self):
         if self.current_index:
             t = threading.Thread(target=self.getTickerAndPRice)
             t.start()
-        self.root.after(2000,self.updateTickerAndPrice) 
+        self.root.after(3000,self.updateTickerAndPrice)
+    
 
-     
+    def updateTickerLabel(self):
+        if self.current_index:
+            self.lGraphIndexName.configure(text=f"{self.current_index} : {self.getCurrentPriceFromMemory()}")
+        self.root.after(1000,self.updateTickerLabel)
+        
+    def drawNewGraph(self):
+        (hs_price, hs_date) = self.getCurrentStockHistoricalData()
+        self.line.set_data(hs_date,hs_price)
+        self.ax.relim()
+        self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        self.ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+        self.fig.autofmt_xdate()
+        self.ax.autoscale_view()
+        self.ax.set_xlabel("Date",color="black",fontsize = 10)
+        self.ax.set_ylabel("Price: $",color="black",fontsize=10)
+        self.fig.tight_layout()
+        self.ax.tick_params(axis="x",size=8)
+        self.cGraphsFrame.draw()
+
+
+    def updateChartWithCurrentIndex(self):
+        # graph_thread = threading.Thread(target=self.drawNewGraph)
+        # graph_thread.start()
+        self.drawNewGraph() 
+
+
+    def getCurrentStockHistoricalData(self):
+        if self.current_indexID != None:
+            self.db.cursor.execute(
+                "SELECT closing_price from HistoricalPrice where financial_instrument_id = ?",
+                (self.current_indexID,)
+            )
+            closing_price_data = self.db.cursor.fetchall()
+            self.db.cursor.execute(
+                "SELECT date from HistoricalPrice where financial_instrument_id = ?",
+                (self.current_indexID,)
+            )
+            date = self.db.cursor.fetchall()
+        hs_price = [] 
+        hs_date = []
+        for i in range(len(closing_price_data)):
+            hs_price.append(closing_price_data[i][0])
+            hs_date.append(datetime.datetime.fromisoformat(date[i][0]))
+        
+        return (hs_price, hs_date)
+
+    def getCurrentPriceFromMemory(self):
+        self.db.mem_cursor.execute(
+            "SELECT last_closing_price from FinancialInstrument where id= ?",
+            (self.current_indexID,)
+        )
+        last_price = self.db.mem_cursor.fetchone()[0]
+        return last_price
+
+
     def getTickerAndPRice(self):
             price = ShowData.getIndexPrice(url=self.url,driver=self.driver).replace("'","").replace(",","")
-            self.lGraphIndexName.configure(text=f"{self.current_index} : {price}")
+            #self.lGraphIndexName.configure(text=f"{self.current_index} : {price}")
             self.global_price = float(price)
             self.driver.refresh()    
 
@@ -137,21 +202,15 @@ class MainWindow:
                 "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
                 (float(self.global_price),self.current_indexID)
         )
-        # self.db.cursor.execute(
-        #     "SELECT last_closing_price FROM FinancialInstrument where id = ?",
-        #     (self.current_indexID,)
-        # )
-
-        # db_price = self.db.cursor.fetchall()[0]
-        # self.db.cursor.execute(
-        #     "SELECT ticker FROM FinancialInstrument where id = ?",
-        #     (self.current_indexID,)
-        # )
+        self.db.mem_cursor.execute(
+            "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
+            (float(self.global_price),self.current_indexID)
+        ) 
 
         self.db.conn.commit()
+        self.db.mem_conn.commit()
+
         
-        # db_ticker = self.db.cursor.fetchall()[0]
-        # messagebox.showinfo(db_ticker,db_price)
         self.root.after(5000, self.updateFinancialInstrumentCurrentPrice)
 
     def activeTicker(self,ticker,indexid):
@@ -175,6 +234,7 @@ class MainWindow:
         MainWindow._instance = None
         self.root.destroy()
         self.db.conn.close()
+        self.db.mem_conn.close()
     
     def run(self):
         self.root.mainloop()

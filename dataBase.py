@@ -13,11 +13,13 @@ class DataBase:
 
     _dbInstance = None
     tickers = ["^GSPC","^DJI","^IXIC","^NYA","^BUK100P"]
-
+    full_names = ["S&P 500","Dow Jones Industrial Average","NasDaq Composite", "NYSE Composite","Cboe UK 100"]
 
     def __init__(self):
         self.conn = sqlite3.connect("StockViewDatabase.db")
         self.cursor = self.conn.cursor()
+        self.mem_conn = sqlite3.connect(":memory:")
+        self.mem_cursor = self.mem_conn.cursor()
         
         self.cursor.executescript("""
         BEGIN;
@@ -61,24 +63,50 @@ class DataBase:
         COMMIT;
         """)
 
+
+        self.mem_cursor.executescript("""
+            BEGIN;
+                create table if not exists FinancialInstrument(
+                    id INTEGER primary key,
+                    ticker TEXT not null,
+                    full_name TEXT not null,
+                    last_closing_price real
+                );
+            COMMIT;
+                                    """)
+
         self.cursor.execute("SELECT * from FinancialInstrument")
         self.checkingDBLoad = self.cursor.fetchall()
         if len(self.checkingDBLoad) == 0:
             self.FinancialInstrumentInitialization()
             self.HistoricalPriceInitialization()
             asyncio.run(self.NewsDataInitialization())
- 
+        self.MemFinancialInstrumentIntialization()
     
+    def MemFinancialInstrumentIntialization(self):
+        ids = [1,2,3,4,5]
+        for i in range(len(ids)):
+            self.mem_cursor.execute(
+                  "INSERT INTO FinancialInstrument(id, ticker,full_name) values (?,?,?)",
+                    (ids[i], self.tickers[i], self.full_names[i])  
+            )
+        self.mem_conn.commit()
+
+
     def FinancialInstrumentInitialization(self):
         ids = [1,2,3,4,5]
-        full_names = ["S&P 500","Dow Jones Industrial Average","NasDaq Composite", "NYSE Composite","Cboe UK 100"]
         for i in range(len(ids)):
             self.cursor.execute(
                 "INSERT INTO FinancialInstrument(id, ticker,full_name) values (?,?,?)",
-                (ids[i], self.tickers[i], full_names[i])
+                (ids[i], self.tickers[i], self.full_names[i])
 
                 )
+            self.mem_cursor.execute(
+                  "INSERT INTO FinancialInstrument(id, ticker,full_name) values (?,?,?)",
+                    (ids[i], self.tickers[i], self.full_names[i])  
+            )
         self.conn.commit()
+        self.mem_conn.commit()
 
 
     def HistoricalPriceInitialization(self):
@@ -94,7 +122,6 @@ class DataBase:
                      , float(data["Low"].iloc[price_index]), int(data["Volume"].iloc[price_index]), data.index[price_index].strftime("%Y-%m-%d %H:%M:%S"))
                 )
         self.conn.commit()
-
 
 
     
