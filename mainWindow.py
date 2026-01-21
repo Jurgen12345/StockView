@@ -14,7 +14,7 @@ class MainWindow:
 
     _instance = None
     current_index = ""
-    current_indexID= 1
+    current_indexID= 0
     global_price = 0.0
     current_ticker = ""
     url = ""
@@ -82,19 +82,19 @@ class MainWindow:
         self.fVisualizationChoicesFrame = ttk.Frame(self.fVisualizationGraphs, padding=2, style="MainColor.TFrame")        
         self.fVisualizationChoicesFrame.pack(side="right")
         self.bSMPIndex = ttk.Button(self.fVisualizationChoicesFrame, style="ButtonColor.TButton", text="^GSPC", )
-        self.bSMPIndex.configure(command=lambda: (self.activeTicker("GSPC",1), self.updateChartWithCurrentIndex()))
+        self.bSMPIndex.configure(command=lambda: (self.activeTicker("GSPC",0), self.updateChartWithCurrentIndex()))
         self.bSMPIndex.grid(row=0,column=0, padx=1, pady=10,sticky="nsew")
         self.bDJIIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="DJI")
-        self.bDJIIndex.configure(command=lambda: (self.activeTicker("DJI",2),self.updateChartWithCurrentIndex()))
+        self.bDJIIndex.configure(command=lambda: (self.activeTicker("DJI",1),self.updateChartWithCurrentIndex()))
         self.bDJIIndex.grid(row=1, column=0,padx=5,pady=10,sticky="nsew")
         self.bIXICIndex = ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton", text="IXIC")
-        self.bIXICIndex.configure(command=lambda: (self.activeTicker("IXIC",3), self.updateChartWithCurrentIndex()))
+        self.bIXICIndex.configure(command=lambda: (self.activeTicker("IXIC",2), self.updateChartWithCurrentIndex()))
         self.bIXICIndex.grid(row=2, column=0,padx=5,pady=10,sticky="nsew")
         self.bNYAIndex= ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="NYA")
-        self.bNYAIndex.configure(command=lambda: (self.activeTicker("NYA",4), self.updateChartWithCurrentIndex())) 
+        self.bNYAIndex.configure(command=lambda: (self.activeTicker("NYA",3), self.updateChartWithCurrentIndex())) 
         self.bNYAIndex.grid(row=3, column=0,padx=5,pady=10,sticky="nsew")
         self.bBUK100PIndex= ttk.Button(self.fVisualizationChoicesFrame,style="ButtonColor.TButton",  text="BUK100P")
-        self.bBUK100PIndex.configure(command=lambda : (self.activeTicker("BUK100P",5), self.updateChartWithCurrentIndex()))
+        self.bBUK100PIndex.configure(command=lambda : (self.activeTicker("BUK100P",4), self.updateChartWithCurrentIndex()))
         self.bBUK100PIndex.grid(row=4, column=0,padx=5,pady=10,sticky="nsew")
 
 
@@ -103,14 +103,17 @@ class MainWindow:
         #My Portofolio Compact Window
         self.fPortofolioFrame = ttk.Frame(self.fCenterRowFrame, padding=5, style="CustomColor1.TFrame")
         self.fPortofolioFrame.pack(side="left", expand=True)
-        self.lMyPortofolioTextLable = ttk.Label(self.fPortofolioFrame, text="My Portofolio", font=("Aptoos", 18, "bold"))
+        self.lMyPortofolioTextLable = ttk.Label(self.fPortofolioFrame, text="My Portofolio", font=("Aptoos", 18, "bold"), style="LabelColor.TLabel")
         self.lMyPortofolioTextLable.pack(side="top", pady=10,  padx=20)
         self.fPortofolioData = ttk.Frame(self.fPortofolioFrame)
         self.fPortofolioData.pack(side="bottom",padx=10, expand=True)
-        self.lStockLabel1 = ttk.Label(self.fPortofolioData, text="Stock 1", font=("Aptos",14))
-        self.lStockLabel1.grid(row =0, column=0, padx=5, pady=5,sticky="nsew")
-        self.lStockLabel2 = ttk.Label(self.fPortofolioData, text="Stock 1", font=("Aptos",14))
-        self.lStockLabel2.grid(row =1, column=0, padx=5, pady=5,sticky="nsew")
+        if (self.checkPorfofolioLength() == 0):
+            self.bEmptyStockLabel1 = ttk.Button(self.fPortofolioData, text="Portofolio is Empty! Click Here To Add Stocks.",style="ButtonColor.TButton")
+            self.bEmptyStockLabel1.grid(row=0,column=0,padx=5,pady=5, sticky="nsew")
+        # self.lStockLabel1 = ttk.Label(self.fPortofolioData, text="Stock 1", font=("Aptos",14))
+        # self.lStockLabel1.grid(row =0, column=0, padx=5, pady=5,sticky="nsew")
+        # self.lStockLabel2 = ttk.Label(self.fPortofolioData, text="Stock 1", font=("Aptos",14))
+        # self.lStockLabel2.grid(row =1, column=0, padx=5, pady=5,sticky="nsew")
 
         #News Compact Window
         self.fNewsFrame = ttk.Frame(self.fCenterRowFrame, padding=5, style="CustomColor2.TFrame")
@@ -140,7 +143,17 @@ class MainWindow:
         if self.current_index:
             self.lGraphIndexName.configure(text=f"{self.current_index} : {self.getCurrentPriceFromMemory()}")
         self.root.after(1000,self.updateTickerLabel)
-        
+
+
+    def checkPorfofolioLength(self):
+        self.db.cursor.execute(
+            "SELECT * from Protfolio"
+        )
+        portofolio_contents = self.db.cursor.fetchall()
+        return len(portofolio_contents) 
+
+
+
     def drawNewGraph(self):
         (hs_price, hs_date) = self.getCurrentStockHistoricalData()
         self.line.set_data(hs_date,hs_price)
@@ -202,16 +215,33 @@ class MainWindow:
                 "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
                 (float(self.global_price),self.current_indexID)
         )
-        self.db.mem_cursor.execute(
-            "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
-            (float(self.global_price),self.current_indexID)
-        ) 
+
+
+        fin_lastClosing = self.retrieveLastClosingPriceFromFinancialInstrument()
+        for i in range(len(fin_lastClosing)):
+            print(fin_lastClosing[i][0])
+            print(".......")
+            self.db.mem_cursor.execute(
+                "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
+                (fin_lastClosing[i][0],i)
+            ) 
+        print("-------")
+
+
 
         self.db.conn.commit()
         self.db.mem_conn.commit()
 
-        
-        self.root.after(5000, self.updateFinancialInstrumentCurrentPrice)
+        self.root.after(3000, self.updateFinancialInstrumentCurrentPrice)
+
+    def retrieveLastClosingPriceFromFinancialInstrument(self):
+        self.db.cursor.execute(
+            "SELECT last_closing_price from FinancialInstrument where id=0 or id =1 or id =2 or id = 3 or id =4"
+        )   
+        fin_closing = self.db.cursor.fetchall()
+        return fin_closing
+
+
 
     def activeTicker(self,ticker,indexid):
         self.current_index = ticker
