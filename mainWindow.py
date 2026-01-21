@@ -21,7 +21,8 @@ class MainWindow:
     def __init__(self):
         self.db = DataBase.getInstance()
         self.root = tk.Tk()
-        self.root.geometry("1200x600")
+        self.root.geometry("1920x1080")
+        self.root.title("StockView Home")
         self.sMainStyle = ttk.Style()
         self.sMainStyle.theme_use("clam")
         self.sMainStyle.configure("MainColor.TFrame",background ="#536878", foreground ="#FFFFFF")
@@ -70,7 +71,7 @@ class MainWindow:
         self.fVisualizationGraphs.pack(side="bottom", padx=10, pady=20)
         # self.cGraphsFrame = tk.Canvas(self.fVisualizationGraphs,bg="white",height=400,width=500)
         # self.cGraphsFrame.pack(side="left",padx = 5, pady=20)
-        self.fig = Figure(figsize=(4,5),dpi=100)
+        self.fig = Figure(figsize=(6,3),dpi=100)
         self.ax = self.fig.add_subplot(111)
         self.line, = self.ax.plot([],[])
         self.cGraphsFrame = FigureCanvasTkAgg(figure=self.fig,master=self.fVisualizationGraphs)
@@ -118,18 +119,21 @@ class MainWindow:
         #News Compact Window
         self.fNewsFrame = ttk.Frame(self.fCenterRowFrame, padding=5, style="CustomColor2.TFrame")
         self.fNewsFrame.pack(side="right", padx=20)
-        self.lNewsInfoLabel = ttk.Label(self.fNewsFrame, text="Daily News", font=("Aptos", 18,"bold"))
+        self.lNewsInfoLabel = ttk.Label(self.fNewsFrame, text="Daily News", font=("Aptos", 18,"bold"), style="LabelColor.TLabel")
         self.lNewsInfoLabel.pack(side ="top",padx=10, pady=20)
         self.fDailyNewsFrame = ttk.Frame(self.fNewsFrame)
         self.fDailyNewsFrame.pack(side="bottom", padx=10, expand=True)
-        self.lDailyNews1 = ttk.Label(self.fDailyNewsFrame,text="Daily News 1",font=("Aptos",14)) 
-        self.lDailyNews1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-        self.lDailyNews2 = ttk.Label(self.fDailyNewsFrame,text="Daily News 2",font=("Aptos",14)) 
-        self.lDailyNews2.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        self.generatedArticles = self.generate5DifferentNewsArticles()
+        self.articlesList = []
+        for newsIndex in range(5):
+            self.articlesList.append(ttk.Label(self.fDailyNewsFrame,text=f"{self.generatedArticles[newsIndex][0]}  (Date : {self.generatedArticles[newsIndex][1]})",font=("Aptos",12), style="LabelColor.TLabel"))
+            self.articlesList[newsIndex].grid(row=newsIndex, column=0, padx=5, pady=5, sticky="nsew")
+        # Main Operations
         self.driver = ShowData.initializeWebdriver()
         self.updateFinancialInstrumentCurrentPrice()
         self.updateTickerAndPrice()
         self.updateTickerLabel()
+        self.generate5DifferentNewsArticles()
         self.updateTime()
 
     def updateTickerAndPrice(self):
@@ -175,6 +179,13 @@ class MainWindow:
         self.drawNewGraph() 
 
 
+    def generate5DifferentNewsArticles(self):
+        self.db.cursor.execute(
+            "SELECT article_title, article_date from NewsData order by random() limit 5"
+        )
+        news_article = self.db.cursor.fetchall()
+        return news_article
+
     def getCurrentStockHistoricalData(self):
         if self.current_indexID != None:
             self.db.cursor.execute(
@@ -219,13 +230,13 @@ class MainWindow:
 
         fin_lastClosing = self.retrieveLastClosingPriceFromFinancialInstrument()
         for i in range(len(fin_lastClosing)):
-            print(fin_lastClosing[i][0])
-            print(".......")
+            #print(fin_lastClosing[i][0])
+            #print(".......")
             self.db.mem_cursor.execute(
                 "UPDATE FinancialInstrument SET last_closing_price= ? where id = ?",
                 (fin_lastClosing[i][0],i)
             ) 
-        print("-------")
+        #print("-------")
 
 
 
