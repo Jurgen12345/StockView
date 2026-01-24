@@ -61,8 +61,17 @@ class MainWindow:
         #Visualization Compact Window
         self.fGraphInfoFrame = ttk.Frame(self.fCenterRowFrame,padding=2, style="MainColor.TFrame")
         self.fGraphInfoFrame.pack(side="left")
-        self.lGraphTitleLabel = ttk.Label(self.fGraphInfoFrame, text="Indices", font=("Aptos", 18,"bold"),style="LabelColor.TLabel")
-        self.lGraphTitleLabel.pack(side = "top",pady= 5, padx= 20)
+        self.lGraphTitleLabel = ttk.Label(self.fGraphInfoFrame, text="Stocks", font=("Aptos", 18,"bold"),style="LabelColor.TLabel")
+        self.lGraphTitleLabel.pack(side = "top",pady= 5)
+        self.fSerchFrame = ttk.Frame(self.fGraphInfoFrame, padding=2,style="MainColor.TFrame")
+        self.fSerchFrame.pack(side="top",expand=True,anchor="w")
+        self.tbSearchBox = tk.Text(self.fSerchFrame, background="#536878", foreground="#CFCFCF",width=20, height=1, font=("Aptos"))
+        self.tbSearchBox.pack(side="left", padx=2)
+        self.tbSearchBox.insert("1.0","Enter Ticker symbol..")
+        self.tbSearchBox.bind("<Button-1>",self.checkIfSelectedSearchBox)
+        self.tbSearchBox.bind("<FocusOut>", self.checkIfNotSelectedAndEmpty)
+        self.bSearchButton = ttk.Button(self.fSerchFrame, text="Search", style="ButtonColor.TButton")
+        self.bSearchButton.pack(side="right", padx=5)
         self.lGraphIndexName = ttk.Label(self.fGraphInfoFrame ,font=("Aptos", 18),style="LabelColor.TLabel")
         self.lGraphIndexName.pack(side="top",pady=2,padx=5, expand=True, anchor="w")
         self.lGraphChart = ttk.Label(self.fGraphInfoFrame, text="Chart", font=("Aptos",16,"italic"),style="LabelColor.TLabel")
@@ -142,6 +151,15 @@ class MainWindow:
             t.start()
         self.root.after(3000,self.updateTickerAndPrice)
     
+
+
+    def checkIfSelectedSearchBox(self,event):
+        self.tbSearchBox.delete("1.0",tk.END)
+
+    def checkIfNotSelectedAndEmpty(self, event):
+        if self.tbSearchBox.get("1.0","end-1c") == "":
+            self.tbSearchBox.insert("1.0","Enter Ticker symbol..")
+
 
     def updateTickerLabel(self):
         if self.current_index:
